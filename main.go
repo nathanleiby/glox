@@ -15,7 +15,7 @@ limitations under the License.
 */
 package main
 
-import "github.com/gitpod/mycli/cmd"
+import "github.com/nathanleiby/glox/cmd"
 
 func main() {
 	cmd.Execute()

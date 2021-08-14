@@ -1,4 +1,4 @@
-module github.com/gitpod/mycli
+module github.com/nathanleiby/glox
 
 go 1.16
 
