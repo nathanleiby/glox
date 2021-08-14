@@ -42,16 +42,9 @@ func (s *Scanner) peekNext() byte {
 // match is a "conditional advance()".
 // It checks if the current character matches, and advances if so/
 func (s *Scanner) match(expected byte) bool {
-	if s.isAtEnd() {
+	if s.peek() != expected {
 		return false
 	}
-	if s.source[s.current] != expected {
-		return false
-	}
-	// TODO: Is this OK refactor?
-	// if s.peek() != expected {
-	// 	return false
-	// }
 
 	s.current = s.current + 1
 	return true
