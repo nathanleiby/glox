@@ -1,6 +1,9 @@
 package cmd
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 type Scanner struct {
 	source  string
@@ -66,9 +69,9 @@ func (s *Scanner) scanString() {
 	s.advance() // Consume the closing "
 
 	// Trim the surrounding quotes.
-	// text := s.tokenText()
-	// value := text[1 : len(text)-2]
-	s.addToken(STRING) //  TODO: addTokenliteral with real value
+	text := s.tokenText()
+	value := text[1 : len(text)-1]
+	s.addTokenLiteral(STRING, value)
 }
 
 func (s *Scanner) scanNumber() {
@@ -86,8 +89,12 @@ func (s *Scanner) scanNumber() {
 		}
 	}
 
-	// TODO: Support adding a number token
-	s.addToken(NUMBER)
+	val, err := strconv.ParseFloat(s.tokenText(), 64)
+	if err != nil {
+		loxError(s.line, fmt.Sprintf("Invalid number: %s", err))
+	}
+
+	s.addTokenLiteral(NUMBER, val)
 }
 
 func (s *Scanner) tokenText() string {
@@ -130,12 +137,15 @@ func (s *Scanner) addToken(tt TokenType) {
 	})
 }
 
-// // TODO: Support non-strings, like numbers/etc
-// // the original code has an Object in java. Maybe interface{} could work here?
-// func (s *Scanner) addTokenLiteral(tt TokenType, value string) {
-//     text = source.substring(start, current);
-//     tokens.add(new Token(type, text, literal, line));
-// }
+func (s *Scanner) addTokenLiteral(tt TokenType, value interface{}) {
+	text := s.tokenText()
+	s.tokens = append(s.tokens, Token{
+		tokenType: tt,
+		lexeme:    text,
+		literal:   value,
+		line:      s.line,
+	})
+}
 
 func (s *Scanner) scanToken() {
 	c := s.advance()

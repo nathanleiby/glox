@@ -1,1 +1,4 @@
 var language = "lox";
+var what = 3 + 7;
+var answer = 1.123;
+var question = -9;
