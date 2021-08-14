@@ -2,17 +2,6 @@ package cmd
 
 import "fmt"
 
-type Token struct {
-	tokenType TokenType
-	lexeme    string
-	literal   string // TODO: Object?
-	line      int
-}
-
-func (t Token) String() string {
-	return fmt.Sprintf("%03d %s %s", t.tokenType, t.lexeme, t.literal)
-}
-
 type Scanner struct {
 	source  string
 	start   int
@@ -43,6 +32,13 @@ func (s *Scanner) peek() byte {
 	return s.source[s.current]
 }
 
+func (s *Scanner) peekNext() byte {
+	if s.current+1 >= len(s.source) {
+		return 0
+	}
+	return s.source[s.current+1]
+}
+
 // match is a "conditional advance()".
 // It checks if the current character matches, and advances if so/
 func (s *Scanner) match(expected byte) bool {
@@ -61,7 +57,7 @@ func (s *Scanner) match(expected byte) bool {
 	return true
 }
 
-func (s *Scanner) scanStringToken() {
+func (s *Scanner) scanString() {
 	for s.peek() != '"' && !s.isAtEnd() {
 		if s.peek() == '\n' {
 			s.line++
@@ -77,12 +73,63 @@ func (s *Scanner) scanStringToken() {
 	s.advance() // Consume the closing "
 
 	// Trim the surrounding quotes.
-	// value := s.source[s.start+1 : s.current-1]
+	// text := s.tokenText()
+	// value := text[1 : len(text)-2]
 	s.addToken(STRING) //  TODO: addTokenliteral with real value
 }
 
+func (s *Scanner) scanNumber() {
+	for s.isDigit(s.peek()) {
+		s.advance()
+	}
+
+	// look for a fractional part
+	if s.peek() == '.' && s.isDigit(s.peekNext()) {
+		// consume the '.'
+		s.advance()
+
+		for s.isDigit(s.peek()) {
+			s.advance()
+		}
+	}
+
+	// TODO: Support adding a number token
+	s.addToken(NUMBER)
+}
+
+func (s *Scanner) tokenText() string {
+	return s.source[s.start:s.current]
+}
+
+func (s *Scanner) scanIdentifier() {
+	for s.isAlphaNumeric(s.peek()) {
+		s.advance()
+	}
+
+	text := s.tokenText()
+	tokenType, ok := keywords[text]
+	if !ok {
+		tokenType = IDENTIFIER
+	}
+	s.addToken(tokenType)
+}
+
+func (s *Scanner) isDigit(c byte) bool {
+	return c >= '0' && c <= '9'
+}
+
+func (s *Scanner) isAlpha(c byte) bool {
+	return (c >= 'a' && c <= 'z') ||
+		(c >= 'A' && c <= 'Z') ||
+		c == '_'
+}
+
+func (s *Scanner) isAlphaNumeric(c byte) bool {
+	return s.isAlpha(c) || s.isDigit(c)
+}
+
 func (s *Scanner) addToken(tt TokenType) {
-	text := s.source[s.start:s.current]
+	text := s.tokenText()
 	s.tokens = append(s.tokens, Token{
 		tokenType: tt,
 		lexeme:    text,
@@ -158,9 +205,15 @@ func (s *Scanner) scanToken() {
 	case '\n':
 		s.line = s.line + 1
 	case '"':
-		s.scanStringToken()
+		s.scanString()
 	default:
-		loxError(s.line, fmt.Sprintf("unexpected character: %c", c))
+		if s.isDigit(c) {
+			s.scanNumber()
+		} else if s.isAlpha(c) {
+			s.scanIdentifier()
+		} else {
+			loxError(s.line, fmt.Sprintf("unexpected character: %c", c))
+		}
 	}
 
 }
