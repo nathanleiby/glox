@@ -35,6 +35,24 @@ func (expr *UnaryExpr) Expr() {
 	return
 }
 
+// LiteralExpr is an unary expression
+type LiteralExpr struct {
+	Value interface{}
+}
+
+func (expr *LiteralExpr) Expr() {
+	return
+}
+
+// GroupingExpr is an unary expression
+type GroupingExpr struct {
+	Value Expr
+}
+
+func (expr *GroupingExpr) Expr() {
+	return
+}
+
 ////////////////////////////////////////
 // Inspecting position
 ////////////////////////////////////////
@@ -48,14 +66,14 @@ func (p *Parser) previous() Token {
 }
 
 func (p *Parser) isAtEnd() bool {
-	return p.current().tokenType == EOF
+	return p.current().TokenType == EOF
 }
 
 func (p *Parser) check(tt TokenType) bool {
 	if p.isAtEnd() {
 		return false
 	}
-	return p.current().tokenType == tt
+	return p.current().TokenType == tt
 }
 
 ////////////////////////////////////////
@@ -165,22 +183,40 @@ func (p *Parser) unary() Expr {
 
 func (p *Parser) primary() Expr {
 	if p.match(FALSE) {
-		return &LiteralExpr{value: false}
+		return &LiteralExpr{Value: false}
 	}
 	if p.match(TRUE) {
-		return &LiteralExpr{value: true}
+		return &LiteralExpr{Value: true}
 	}
 	if p.match(NIL) {
-		return &LiteralExpr{value: nil}
+		return &LiteralExpr{Value: nil}
 	}
 
 	if p.match(NUMBER, STRING) {
-		return &LiteralExpr{value: p.previous().literal}
+		return &LiteralExpr{Value: p.previous().Literal}
 	}
 
 	if p.match(LEFT_PAREN) {
 		expr := p.expression()
 		p.consume(RIGHT_PAREN, "Expect ')' after expression.")
-		return &GroupingExpr{group: expr}
+		return &GroupingExpr{Value: expr}
+	}
+
+	panic("primary() failed to match anything")
+}
+
+func (p *Parser) consume(tt TokenType, message string) Token {
+	if p.check(tt) {
+		return p.advance()
+	}
+
+	panic(p.parseError(p.current(), message))
+}
+
+func (p *Parser) parseError(t Token, msg string) {
+	if t.TokenType == EOF {
+		report(token.line, " at end", message)
+	} else {
+		report(token.line, " at '"+token.lexeme+"'", message)
 	}
 }
