@@ -3,6 +3,8 @@ package cmd
 import (
 	"fmt"
 	"os"
+
+	"github.com/nathanleiby/glox/cmd/scanner"
 )
 
 func lox(args []string) {
@@ -31,7 +33,7 @@ func runFile(path string) error {
 }
 
 func run(source string) error {
-	s := NewScanner(source)
+	s := scanner.NewScanner(source)
 	err := s.ScanTokens()
 	if err != nil {
 		return err
