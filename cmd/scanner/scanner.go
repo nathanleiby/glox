@@ -3,6 +3,8 @@ package scanner
 import (
 	"fmt"
 	"strconv"
+
+	. "github.com/nathanleiby/glox/cmd/models"
 )
 
 type Scanner struct {

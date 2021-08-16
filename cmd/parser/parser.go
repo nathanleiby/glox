@@ -1,4 +1,8 @@
-package cmd
+package parser
+
+import (
+	. "github.com/nathanleiby/glox/cmd/models"
+)
 
 type Parser struct {
 	tokens  []Token
