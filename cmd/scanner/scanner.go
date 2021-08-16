@@ -109,7 +109,7 @@ func (s *Scanner) scanIdentifier() {
 	}
 
 	text := s.tokenText()
-	tokenType, ok := keywords[text]
+	tokenType, ok := Keywords[text]
 	if !ok {
 		tokenType = IDENTIFIER
 	}
@@ -133,19 +133,19 @@ func (s *Scanner) isAlphaNumeric(c byte) bool {
 func (s *Scanner) addToken(tt TokenType) {
 	text := s.tokenText()
 	s.tokens = append(s.tokens, Token{
-		tokenType: tt,
-		lexeme:    text,
-		line:      s.line,
+		TokenType: tt,
+		Lexeme:    text,
+		Line:      s.line,
 	})
 }
 
 func (s *Scanner) addTokenLiteral(tt TokenType, value interface{}) {
 	text := s.tokenText()
 	s.tokens = append(s.tokens, Token{
-		tokenType: tt,
-		lexeme:    text,
-		literal:   value,
-		line:      s.line,
+		TokenType: tt,
+		Lexeme:    text,
+		Literal:   value,
+		Line:      s.line,
 	})
 }
 
@@ -234,9 +234,9 @@ func (s *Scanner) ScanTokens() error {
 	}
 
 	s.tokens = append(s.tokens, Token{
-		tokenType: EOF,
-		lexeme:    "",
-		line:      s.line,
+		TokenType: EOF,
+		Lexeme:    "",
+		Line:      s.line,
 	})
 
 	return nil

@@ -5,7 +5,7 @@ import "fmt"
 // TODO: in golang, it's written here!
 // https://github.com/golang/go/blob/master/src/go/token/token.go
 
-var keywords = map[string]TokenType{
+var Keywords = map[string]TokenType{
 	"and":    AND,
 	"class":  CLASS,
 	"else":   ELSE,
@@ -25,15 +25,15 @@ var keywords = map[string]TokenType{
 }
 
 type Token struct {
-	tokenType TokenType
-	lexeme    string
-	literal   interface{}
-	line      int
+	TokenType TokenType
+	Lexeme    string
+	Literal   interface{}
+	Line      int
 }
 
 func (t Token) String() string {
-	tt := tokenTypeToName[t.tokenType]
-	return fmt.Sprintf("%12s %15s %12v", tt, t.lexeme, t.literal)
+	tt := TokenTypeToName[t.TokenType]
+	return fmt.Sprintf("%12s %15s %12v", tt, t.Lexeme, t.Literal)
 }
 
 type TokenType int
@@ -88,7 +88,7 @@ const (
 	EOF
 )
 
-var tokenTypeToName = map[TokenType]string{
+var TokenTypeToName = map[TokenType]string{
 	LEFT_PAREN:    "LEFT_PAREN",
 	RIGHT_PAREN:   "RIGHT_PAREN",
 	LEFT_BRACE:    "LEFT_BRACE",
