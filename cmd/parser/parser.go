@@ -1,12 +1,21 @@
 package parser
 
 import (
+	"fmt"
+	"strings"
+
 	. "github.com/nathanleiby/glox/cmd/models"
 )
 
 type Parser struct {
 	tokens  []Token
 	currIdx int
+}
+
+func NewParser(tokens []Token) *Parser {
+	return &Parser{
+		tokens: tokens,
+	}
 }
 
 // Expr is an expression
@@ -21,6 +30,10 @@ type BinaryExpr struct {
 	Right    Expr
 }
 
+func (expr *BinaryExpr) String() string {
+	return fmt.Sprintf("%s %s %s", expr.Left, expr.Operator.TokenType, expr.Right)
+}
+
 func (expr *BinaryExpr) Expr() {
 	return
 }
@@ -29,6 +42,10 @@ func (expr *BinaryExpr) Expr() {
 type UnaryExpr struct {
 	Operator Token
 	Right    Expr
+}
+
+func (expr *UnaryExpr) String() string {
+	return fmt.Sprintf("%s %s", expr.Operator, expr.Right)
 }
 
 func (expr *UnaryExpr) Expr() {
@@ -40,6 +57,10 @@ type LiteralExpr struct {
 	Value interface{}
 }
 
+func (expr *LiteralExpr) String() string {
+	return fmt.Sprintf("%v", expr.Value)
+}
+
 func (expr *LiteralExpr) Expr() {
 	return
 }
@@ -49,6 +70,10 @@ type GroupingExpr struct {
 	Value Expr
 }
 
+func (expr *GroupingExpr) String() string {
+	return fmt.Sprintf("(%v)", expr.Value)
+}
+
 func (expr *GroupingExpr) Expr() {
 	return
 }
@@ -56,6 +81,7 @@ func (expr *GroupingExpr) Expr() {
 ////////////////////////////////////////
 // Inspecting position
 ////////////////////////////////////////
+
 // current is called peek() in the book
 func (p *Parser) current() Token {
 	return p.tokens[p.currIdx]
@@ -73,7 +99,8 @@ func (p *Parser) check(tt TokenType) bool {
 	if p.isAtEnd() {
 		return false
 	}
-	return p.current().TokenType == tt
+	curType := p.current().TokenType
+	return curType == tt
 }
 
 ////////////////////////////////////////
@@ -100,15 +127,22 @@ func (p *Parser) match(tts ...TokenType) bool {
 ////////////////////////////////////////
 // Expressions
 ////////////////////////////////////////
-func (p *Parser) expression() Expr {
+
+func (p *Parser) expression() (Expr, error) {
 	return p.equality()
 }
 
-func (p *Parser) equality() Expr {
-	expr := p.comparison()
+func (p *Parser) equality() (Expr, error) {
+	expr, err := p.comparison()
+	if err != nil {
+		return nil, err
+	}
 	for p.match(BANG_EQUAL, EQUAL_EQUAL) {
 		op := p.previous()
-		right := p.comparison()
+		right, err := p.comparison()
+		if err != nil {
+			return nil, err
+		}
 		expr = &BinaryExpr{
 			Left:     expr,
 			Operator: op,
@@ -116,15 +150,21 @@ func (p *Parser) equality() Expr {
 		}
 	}
 
-	return expr
+	return expr, nil
 }
 
-func (p *Parser) comparison() Expr {
-	expr := p.term()
+func (p *Parser) comparison() (Expr, error) {
+	expr, err := p.term()
+	if err != nil {
+		return nil, err
+	}
 
 	for p.match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL) {
 		op := p.previous()
-		right := p.term()
+		right, err := p.term()
+		if err != nil {
+			return nil, err
+		}
 		expr = &BinaryExpr{
 			Left:     expr,
 			Operator: op,
@@ -132,15 +172,21 @@ func (p *Parser) comparison() Expr {
 		}
 	}
 
-	return expr
+	return expr, nil
 }
 
-func (p *Parser) term() Expr {
-	expr := p.factor()
+func (p *Parser) term() (Expr, error) {
+	expr, err := p.factor()
+	if err != nil {
+		return nil, err
+	}
 
 	for p.match(MINUS, PLUS) {
 		op := p.previous()
-		right := p.factor()
+		right, err := p.factor()
+		if err != nil {
+			return nil, err
+		}
 		expr = &BinaryExpr{
 			Left:     expr,
 			Operator: op,
@@ -148,16 +194,23 @@ func (p *Parser) term() Expr {
 		}
 	}
 
-	return expr
+	return expr, nil
 }
 
-func (p *Parser) factor() Expr {
+func (p *Parser) factor() (Expr, error) {
 	var expr Expr
-	expr = p.unary()
+	var err error
+	expr, err = p.unary()
+	if err != nil {
+		return nil, err
+	}
 
-	for p.match([]TokenType{SLASH, STAR}) {
+	for p.match(SLASH, STAR) {
 		op := p.previous()
-		right := p.unary()
+		right, err := p.unary()
+		if err != nil {
+			return nil, err
+		}
 		expr = &BinaryExpr{
 			Left:     expr,
 			Operator: op,
@@ -165,58 +218,125 @@ func (p *Parser) factor() Expr {
 		}
 	}
 
-	return expr
+	return expr, nil
 }
 
-func (p *Parser) unary() Expr {
-	if p.match([]TokenType{BANG, MINUS}) {
+func (p *Parser) unary() (Expr, error) {
+	if p.match(BANG, MINUS) {
 		op := p.previous()
-		right := p.unary()
+		right, err := p.unary()
+		if err != nil {
+			return nil, err
+		}
 		return &UnaryExpr{
 			Operator: op,
 			Right:    right,
-		}
+		}, nil
 	}
 
 	return p.primary()
 }
 
-func (p *Parser) primary() Expr {
+var ErrExpectExpression = fmt.Errorf("expect expression")
+
+func (p *Parser) primary() (Expr, error) {
 	if p.match(FALSE) {
-		return &LiteralExpr{Value: false}
+		return &LiteralExpr{Value: false}, nil
 	}
 	if p.match(TRUE) {
-		return &LiteralExpr{Value: true}
+		return &LiteralExpr{Value: true}, nil
 	}
 	if p.match(NIL) {
-		return &LiteralExpr{Value: nil}
+		return &LiteralExpr{Value: nil}, nil
 	}
 
 	if p.match(NUMBER, STRING) {
-		return &LiteralExpr{Value: p.previous().Literal}
+		return &LiteralExpr{Value: p.previous().Literal}, nil
 	}
 
 	if p.match(LEFT_PAREN) {
-		expr := p.expression()
-		p.consume(RIGHT_PAREN, "Expect ')' after expression.")
-		return &GroupingExpr{Value: expr}
+		expr, err := p.expression()
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = p.consume(RIGHT_PAREN, "Expect ')' after expression.")
+		if err != nil {
+			return nil, err
+		}
+		return &GroupingExpr{Value: expr}, nil
 	}
 
-	panic("primary() failed to match anything")
+	return nil, ErrExpectExpression
 }
 
-func (p *Parser) consume(tt TokenType, message string) Token {
+func (p *Parser) consume(tt TokenType, message string) (Token, error) {
 	if p.check(tt) {
-		return p.advance()
+		return p.advance(), nil
 	}
 
-	panic(p.parseError(p.current(), message))
+	return Token{}, parseError(p.current(), message)
 }
 
-func (p *Parser) parseError(t Token, msg string) {
+var ErrParsingEOF = fmt.Errorf("error parsing, at EOF")     // TODO: pass context
+var ErrParsingUnknown = fmt.Errorf("error parsing, unkown") // TODO: pass context
+
+func parseError(t Token, msg string) error {
 	if t.TokenType == EOF {
-		report(token.line, " at end", message)
+		// report(t.Line, " at end", msg)
+		return ErrParsingEOF
 	} else {
-		report(token.line, " at '"+token.lexeme+"'", message)
+		// report(t.Line, " at '"+t.Lexeme+"'", msg)
+		return ErrParsingUnknown
 	}
+}
+
+// TODO: refactor to an erros package
+func report(line int, where, message string) {
+	// FUTURE: Add more useful error context
+	//
+	// Error: Unexpected "," in argument list.
+
+	// 15 | function(first, second,);
+	//                            ^-- Here.
+	fmt.Printf("[line %d] Error %s: %s", line, where, message)
+}
+
+func (p *Parser) Parse() (Expr, error) {
+	return p.expression()
+}
+
+// synchronizes the token stream
+// discards tokens until it reaches one that can appear at that point in the rule.
+func (p *Parser) synchronize() {
+	p.advance()
+
+	for !p.isAtEnd() {
+		if p.previous().TokenType == SEMICOLON {
+			return
+		}
+
+		switch p.current().TokenType {
+		case CLASS:
+		case FUN:
+		case VAR:
+		case FOR:
+		case IF:
+		case WHILE:
+		case PRINT:
+		case RETURN:
+			return
+		}
+
+		p.advance()
+	}
+}
+
+func Parenthesize(exprs []Expr) string {
+	s := make([]string, len(exprs))
+	for i, expr := range exprs {
+		s[i] = fmt.Sprintf("%s", expr)
+	}
+
+	return fmt.Sprintf("(%s)", strings.Join(s, " "))
 }

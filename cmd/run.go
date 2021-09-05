@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/nathanleiby/glox/cmd/parser"
 	"github.com/nathanleiby/glox/cmd/scanner"
 )
 
@@ -36,12 +37,18 @@ func run(source string) error {
 	s := scanner.NewScanner(source)
 	err := s.ScanTokens()
 	if err != nil {
+		fmt.Println("scan error:", err)
 		return err
 	}
 
-	for _, token := range s.Tokens() {
-		fmt.Println(token)
+	p := parser.NewParser(s.Tokens())
+	expr, err := p.Parse()
+	if err != nil {
+		fmt.Println("parse error:", err)
+		return err
 	}
+
+	fmt.Println(parser.Parenthesize([]parser.Expr{expr}))
 
 	return nil
 }

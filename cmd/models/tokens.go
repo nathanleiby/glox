@@ -38,6 +38,10 @@ func (t Token) String() string {
 
 type TokenType int
 
+func (tt TokenType) String() string {
+	return TokenTypeToName[tt]
+}
+
 const (
 	// Single-character tokens.
 	LEFT_PAREN TokenType = iota
